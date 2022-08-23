@@ -1,0 +1,93 @@
+require "uri"
+require "json"
+require "net/http"
+
+# VALUES
+puts "First Name: "
+firstName = gets.chomp
+puts "Last Name: "
+lastName = gets.chomp
+puts "Email address (will also be used as userName): "
+email = gets.chomp
+userName = email # use email as username
+puts "Password: "
+password = gets.chomp
+
+# constants
+organizationName = "Nikola US"
+userGroupName = "Viewer"
+api_key = ENV['DOCUMOTO_API_KEY'] # grab DOCUMOTO_API_KEY environment variable and store it for use in the authorization header
+
+
+# CREATE NEW USER
+userUrl = URI("https://integration.digabit.com/api/ext/user/v1")
+
+userHttps = Net::HTTP.new(userUrl.host, userUrl.port)
+userHttps.use_ssl = true
+
+userRequest = Net::HTTP::Post.new(userUrl)
+userRequest["Content-Type"] = "application/json"
+userRequest["Authorization"] = api_key 
+userRequest.body = JSON.dump({
+  "user": {
+    "enabled": true,
+    "email": email,
+    "firstName": firstName,
+    "lastName": lastName,
+    "password": password,
+    "userName": userName
+  },
+  "organizationName": organizationName
+})
+
+puts "CREATING NEW USER..."
+userResponse = userHttps.request(userRequest)
+puts userResponse.read_body
+puts "RESPONSE - Code " + userResponse.code
+
+if userResponse.code != "204" # abort if user creation was unsuccessful
+    abort "USER CREATION FAILED! See details above. BYE!"
+else
+    puts "SUCCESS!"
+    puts ""
+end
+
+
+# ADD NEW USER TO USER GROUP
+
+userGroupUrl = URI("https://integration.digabit.com/api/ext/user-group/user/v1")
+
+userGroupHttps = Net::HTTP.new(userGroupUrl.host, userGroupUrl.port)
+userGroupHttps.use_ssl = true
+
+userGroupRequest = Net::HTTP::Post.new(userGroupUrl)
+userGroupRequest["Content-Type"] = "application/json"
+userGroupRequest["Authorization"] = api_key
+userGroupRequest.body = JSON.dump({
+  "userGroupName": userGroupName,
+  "userName": userName
+})
+
+puts "ADDING " + userName + " TO " + userGroupName + " USER GROUP"
+userGroupResponse = userGroupHttps.request(userGroupRequest)
+puts userGroupResponse.read_body
+puts "RESPONSE - Code " + userResponse.code
+
+if userGroupResponse.code != "204"
+    abort "FAILED TO ADD USER TO USER GROUP! See details above. BYE!"
+else
+    puts "SUCCESS!"
+    puts ""
+    puts ""
+    puts ""
+end
+
+
+# DISPLAY CREDENTIALS
+puts "NEW USER CREDENTIALS:"
+puts "Username: " + userName
+puts "Password: " + password
+puts userName + " has been added to the " + userGroupName + " user group!"
+puts ""
+puts ""
+puts "GOODBYE!"
